@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>쿠팡 주문 내역</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --line: #d9dee7;
+      --line-strong: #c3cad7;
+      --text: #1f2937;
+      --muted: #667085;
+      --accent: #0f766e;
+      --accent-soft: #e6f4f1;
+      --danger: #b42318;
+      --danger-soft: #fee4e2;
+      --neutral-soft: #f2f4f7;
+      --neutral: #475467;
+      --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    .shell {
+      width: min(1280px, 100%);
+      height: 100dvh;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sticky-panel {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      flex: 0 0 auto;
+      padding-bottom: 16px;
+      background: var(--bg);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title-block {
+      display: grid;
+      gap: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .select-wrap,
+    .check-wrap,
+    .date-range {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .date-range[hidden] {
+      display: none;
+    }
+
+    .date-range input {
+      width: 132px;
+      min-width: 0;
+      flex: 0 1 132px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      color-scheme: light;
+    }
+
+    .date-separator {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .check-wrap {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .check-wrap input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .check-wrap span {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .select-wrap svg {
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    select {
+      min-width: 124px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+    }
+
+    .icon-button:hover {
+      border-color: var(--line-strong);
+      background: #fafafa;
+    }
+
+    .icon-button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .filter-row {
+      margin: -6px 0 12px;
+    }
+
+    .chip-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--neutral);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    .chip.active {
+      border-color: #76a9a3;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .chip:focus-visible,
+    .icon-button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 2px solid #76a9a3;
+      outline-offset: 2px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      min-height: 74px;
+      padding: 12px 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .table-shell {
+      overflow: hidden;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .table-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8fafc;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 11px 12px;
+      border-bottom: 1px solid #eef1f5;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    tbody tr:hover td {
+      background: #fbfcfd;
+    }
+
+    tbody tr.excluded td {
+      background: #fbfbfc;
+      color: var(--muted);
+    }
+
+    tbody tr.excluded .status {
+      opacity: 0.7;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .check-col {
+      width: 46px;
+      min-width: 46px;
+      text-align: center;
+    }
+
+    .row-check {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+    }
+
+    .row-check input,
+    .card-select input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .amount {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .amount.negative {
+      color: var(--danger);
+    }
+
+    .amount.muted {
+      color: var(--muted);
+    }
+
+    .product {
+      min-width: 280px;
+      max-width: 420px;
+      line-height: 1.45;
+    }
+
+    .address {
+      min-width: 260px;
+      max-width: 360px;
+      color: #344054;
+      line-height: 1.45;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.neutral {
+      background: var(--neutral-soft);
+      color: var(--neutral);
+    }
+
+    .status.negative {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .mobile-list {
+      display: none;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .order-card {
+      padding: 14px;
+      border-bottom: 1px solid #eef1f5;
+      background: var(--panel);
+    }
+
+    .order-card:last-child {
+      border-bottom: 0;
+    }
+
+    .order-card.excluded {
+      background: #fbfbfc;
+      color: var(--muted);
+    }
+
+    .order-card.excluded .status {
+      opacity: 0.7;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .card-date {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .card-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .card-product {
+      margin-bottom: 10px;
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    .card-meta {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .card-amount {
+      font-size: 18px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .original-amount {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .empty,
+    .error {
+      padding: 36px 16px;
+      text-align: center;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        padding: 16px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      h1 {
+        font-size: 21px;
+      }
+
+      .controls {
+        width: 100%;
+      }
+
+      .select-wrap,
+      .check-wrap {
+        flex: 1 1 calc(50% - 4px);
+      }
+
+      .date-range {
+        flex: 1 1 100%;
+      }
+
+      .date-range input {
+        width: 100%;
+        flex: 1 1 0;
+      }
+
+      select {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .metric {
+        min-height: 68px;
+        padding: 10px;
+      }
+
+      .metric-value {
+        font-size: 16px;
+      }
+
+      .desktop-table {
+        display: none;
+      }
+
+      .mobile-list {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="sticky-panel">
+      <header class="topbar">
+        <div class="title-block">
+          <h1>쿠팡 주문 내역</h1>
+          <div class="subtle" id="rangeLabel">월별 사용 내역</div>
+        </div>
+        <div class="controls">
+          <label class="select-wrap" title="월 선택">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M8 2v4"></path>
+              <path d="M16 2v4"></path>
+              <rect width="18" height="18" x="3" y="4" rx="2"></rect>
+              <path d="M3 10h18"></path>
+            </svg>
+            <select id="monthSelect" aria-label="월 선택"></select>
+          </label>
+          <div class="date-range" id="dateRangeControls" hidden>
+            <input id="fromDateInput" type="date" aria-label="시작일">
+            <span class="date-separator">~</span>
+            <input id="toDateInput" type="date" aria-label="종료일">
+          </div>
+          <label class="check-wrap" title="현재 필터 결과 전체 선택">
+            <input id="selectAllCheckbox" type="checkbox" checked aria-label="현재 필터 결과 전체 선택">
+            <span>전체 선택</span>
+          </label>
+          <button class="icon-button" id="refreshButton" type="button" title="새로고침" aria-label="새로고침">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+              <path d="M3 21v-5h5"></path>
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+              <path d="M16 8h5V3"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="filter-row">
+        <div class="chip-group" id="recipientChips" aria-label="받는 사람 필터"></div>
+      </div>
+
+      <section class="summary" aria-label="요약">
+        <div class="metric">
+          <div class="metric-label">선택 주문 수</div>
+          <div class="metric-value" id="countMetric">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">합계</div>
+          <div class="metric-value" id="totalMetric">0원</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">취소/환불 제외액</div>
+          <div class="metric-value" id="canceledMetric">0원</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="table-shell">
+      <div class="table-scroll desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th class="check-col">포함</th>
+              <th>주문일</th>
+              <th>상태</th>
+              <th>상품명</th>
+              <th class="amount">금액</th>
+              <th>받는 사람</th>
+              <th>받는 주소</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+      <div class="mobile-list" id="mobileOrders"></div>
+      <div class="empty" id="emptyState" hidden>표시할 주문이 없습니다.</div>
+      <div class="error" id="errorState" hidden></div>
+    </section>
+  </main>
+
+  <script>
+    const CUSTOM_DATE_VALUE = '__custom_date__';
+    const monthSelect = document.querySelector('#monthSelect');
+    const dateRangeControls = document.querySelector('#dateRangeControls');
+    const fromDateInput = document.querySelector('#fromDateInput');
+    const toDateInput = document.querySelector('#toDateInput');
+    const recipientChips = document.querySelector('#recipientChips');
+    const selectAllCheckbox = document.querySelector('#selectAllCheckbox');
+    const refreshButton = document.querySelector('#refreshButton');
+    const ordersBody = document.querySelector('#ordersBody');
+    const mobileOrders = document.querySelector('#mobileOrders');
+    const emptyState = document.querySelector('#emptyState');
+    const errorState = document.querySelector('#errorState');
+    const rangeLabel = document.querySelector('#rangeLabel');
+
+    const formatCurrency = new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW',
+      maximumFractionDigits: 0
+    });
+
+    let currentOrders = [];
+    let selectedOrderNumbers = new Set();
+    let availableMonths = [];
+    let availableRecipients = [];
+    let selectedRecipients = new Set();
+
+    refreshButton.addEventListener('click', () => loadOrders());
+    monthSelect.addEventListener('change', () => {
+      updateDateRangeControls();
+      loadOrders();
+    });
+    fromDateInput.addEventListener('change', () => loadOrders());
+    toDateInput.addEventListener('change', () => loadOrders());
+    selectAllCheckbox.addEventListener('change', () => {
+      selectedOrderNumbers = selectAllCheckbox.checked
+        ? new Set(currentOrders.map(getOrderKey))
+        : new Set();
+      renderAll();
+    });
+
+    init();
+
+    async function init() {
+      await loadMonths();
+      await loadRecipients();
+      await loadOrders();
+    }
+
+    async function loadMonths() {
+      const response = await fetch('/api/months');
+      const data = await response.json();
+      const months = data.months ?? [];
+      availableMonths = months;
+
+      monthSelect.replaceChildren(
+        new Option('전체', ''),
+        new Option('날짜 직접 지정', CUSTOM_DATE_VALUE),
+        ...months.map(month => new Option(month, month))
+      );
+
+      if (months.length > 0) {
+        monthSelect.value = months[0];
+      }
+
+      updateDateRangeControls();
+    }
+
+    async function loadRecipients() {
+      const response = await fetch('/api/recipients');
+      const data = await response.json();
+      availableRecipients = data.recipients ?? [];
+
+      renderRecipientChips();
+    }
+
+    async function loadOrders() {
+      setError('');
+
+      try {
+        const params = new URLSearchParams();
+        if (isCustomDateMode()) {
+          ensureDateRangeDefaults();
+          if (fromDateInput.value && toDateInput.value && fromDateInput.value > toDateInput.value) {
+            throw new Error('시작일이 종료일보다 늦습니다.');
+          }
+          if (fromDateInput.value) params.set('from', fromDateInput.value);
+          if (toDateInput.value) params.set('to', toDateInput.value);
+        } else if (monthSelect.value) {
+          params.set('month', monthSelect.value);
+        }
+
+        for (const recipient of selectedRecipients) {
+          params.append('recipient', recipient);
+        }
+
+        const url = params.toString() ? `/api/orders?${params}` : '/api/orders';
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || '주문 데이터를 불러오지 못했습니다.');
+        }
+
+        currentOrders = data.orders ?? [];
+        selectedOrderNumbers = new Set(currentOrders.map(getOrderKey));
+        renderAll();
+        rangeLabel.textContent = makeRangeLabel();
+      } catch (error) {
+        currentOrders = [];
+        selectedOrderNumbers = new Set();
+        renderAll();
+        rangeLabel.textContent = makeRangeLabel();
+        setError(error.message);
+      }
+    }
+
+    function renderAll() {
+      const selectedOrders = currentOrders.filter(isOrderSelected);
+      renderSummary(summarizeSelectedOrders(selectedOrders), currentOrders.length);
+      renderRows(currentOrders);
+      renderMobileCards(currentOrders);
+      updateSelectAllState(selectedOrders.length, currentOrders.length);
+    }
+
+    function renderSummary(summary = {}, totalCount = 0) {
+      const selectedCount = summary.count ?? 0;
+      const countText = totalCount > 0 && selectedCount !== totalCount
+        ? `${selectedCount} / ${totalCount}건`
+        : `${selectedCount}건`;
+
+      document.querySelector('#countMetric').textContent = countText;
+      document.querySelector('#totalMetric').textContent = formatAmount(summary.totalAmount ?? 0);
+      document.querySelector('#canceledMetric').textContent = formatAmount(summary.canceledAmount ?? 0);
+    }
+
+    function renderRows(orders) {
+      ordersBody.replaceChildren(...orders.map(order => {
+        const row = document.createElement('tr');
+        const amount = Number(order.settlementAmount) || 0;
+        const originalAmount = Number(order.amount) || 0;
+        const selected = isOrderSelected(order);
+        if (!selected) row.classList.add('excluded');
+
+        row.append(
+          selectionCell(order),
+          cell(order.orderDate, 'mono'),
+          statusCell(order),
+          cell(order.productName, 'product'),
+          cell(formatSettlementAmount(amount, originalAmount), `amount ${originalAmount < 0 ? 'muted' : ''}`),
+          cell(order.recipientName),
+          cell(order.recipientAddress, 'address')
+        );
+
+        return row;
+      }));
+
+      emptyState.hidden = orders.length !== 0 || !errorState.hidden;
+    }
+
+    function renderMobileCards(orders) {
+      mobileOrders.replaceChildren(...orders.map(order => {
+        const card = document.createElement('article');
+        const amount = Number(order.settlementAmount) || 0;
+        const originalAmount = Number(order.amount) || 0;
+        card.className = 'order-card';
+        if (!isOrderSelected(order)) card.classList.add('excluded');
+
+        card.append(
+          createElement('div', 'card-head', [
+            cardSelect(order),
+            statusBadge(order)
+          ]),
+          createElement('div', 'card-product', order.productName),
+          createElement('div', 'card-meta', [
+            createElement('div', '', `받는 사람: ${order.recipientName ?? ''}`),
+            createElement('div', '', order.recipientAddress ?? '')
+          ]),
+          createElement('div', 'card-foot', [
+            createElement('div', originalAmount < 0 ? 'original-amount' : '', originalAmount < 0 ? `취소 ${formatAmount(Math.abs(originalAmount))}` : ''),
+            createElement('div', 'card-amount', formatAmount(amount))
+          ])
+        );
+
+        return card;
+      }));
+
+      emptyState.hidden = orders.length !== 0 || !errorState.hidden;
+    }
+
+    function renderRecipientChips() {
+      const chips = [
+        filterChip('받는 사람 전체', selectedRecipients.size === 0, () => {
+          selectedRecipients = new Set();
+          renderRecipientChips();
+          loadOrders();
+        }),
+        ...availableRecipients.map(recipient => filterChip(
+          recipient,
+          selectedRecipients.has(recipient),
+          () => {
+            if (selectedRecipients.has(recipient)) {
+              selectedRecipients.delete(recipient);
+            } else {
+              selectedRecipients.add(recipient);
+            }
+            renderRecipientChips();
+            loadOrders();
+          }
+        ))
+      ];
+
+      recipientChips.replaceChildren(...chips);
+    }
+
+    function filterChip(label, active, onClick) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `chip ${active ? 'active' : ''}`;
+      button.textContent = label;
+      button.setAttribute('aria-pressed', String(active));
+      button.addEventListener('click', onClick);
+      return button;
+    }
+
+    function summarizeSelectedOrders(orders) {
+      return {
+        count: orders.length,
+        totalAmount: orders.reduce((sum, order) => sum + (Number(order.settlementAmount) || 0), 0),
+        canceledAmount: orders.reduce((sum, order) => sum + Math.abs(Math.min(Number(order.amount) || 0, 0)), 0)
+      };
+    }
+
+    function updateSelectAllState(selectedCount, totalCount) {
+      selectAllCheckbox.disabled = totalCount === 0;
+      selectAllCheckbox.checked = totalCount > 0 && selectedCount === totalCount;
+      selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+    }
+
+    function selectionCell(order) {
+      const td = document.createElement('td');
+      const label = document.createElement('label');
+      td.className = 'check-col';
+      label.className = 'row-check';
+      label.title = '합계 포함';
+      label.append(orderCheckbox(order));
+      td.append(label);
+      return td;
+    }
+
+    function cardSelect(order) {
+      const label = document.createElement('label');
+      label.className = 'card-select';
+      label.title = '합계 포함';
+      label.append(
+        orderCheckbox(order),
+        createElement('span', 'card-date', order.orderDate)
+      );
+      return label;
+    }
+
+    function orderCheckbox(order) {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = isOrderSelected(order);
+      checkbox.setAttribute('aria-label', `${order.productName ?? '주문'} 합계 포함`);
+      checkbox.addEventListener('change', () => {
+        setOrderSelected(order, checkbox.checked);
+      });
+      return checkbox;
+    }
+
+    function setOrderSelected(order, selected) {
+      const key = getOrderKey(order);
+      if (selected) {
+        selectedOrderNumbers.add(key);
+      } else {
+        selectedOrderNumbers.delete(key);
+      }
+      renderAll();
+    }
+
+    function isOrderSelected(order) {
+      return selectedOrderNumbers.has(getOrderKey(order));
+    }
+
+    function getOrderKey(order) {
+      return String(order.orderNumber ?? `${order.orderDate}-${order.productName}-${order.amount}`);
+    }
+
+    function isCustomDateMode() {
+      return monthSelect.value === CUSTOM_DATE_VALUE;
+    }
+
+    function updateDateRangeControls() {
+      dateRangeControls.hidden = !isCustomDateMode();
+      if (isCustomDateMode()) {
+        ensureDateRangeDefaults();
+      }
+    }
+
+    function ensureDateRangeDefaults() {
+      if (fromDateInput.value || toDateInput.value) return;
+
+      const baseMonth = availableMonths[0] ?? getCurrentMonth();
+      fromDateInput.value = `${baseMonth}-01`;
+      toDateInput.value = getMonthEndDate(baseMonth);
+    }
+
+    function getCurrentMonth() {
+      const now = new Date();
+      return [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0')
+      ].join('-');
+    }
+
+    function getMonthEndDate(month) {
+      const [year, monthIndex] = month.split('-').map(Number);
+      const end = new Date(year, monthIndex, 0);
+      return [
+        end.getFullYear(),
+        String(end.getMonth() + 1).padStart(2, '0'),
+        String(end.getDate()).padStart(2, '0')
+      ].join('-');
+    }
+
+    function cell(value, className = '') {
+      const td = document.createElement('td');
+      td.textContent = value ?? '';
+      if (className) td.className = className;
+      return td;
+    }
+
+    function statusCell(order) {
+      const td = document.createElement('td');
+      td.append(statusBadge(order));
+      return td;
+    }
+
+    function statusBadge(order) {
+      const badge = document.createElement('span');
+      badge.className = getStatusClass(order);
+      badge.textContent = order.orderStatus ?? '';
+      return badge;
+    }
+
+    function getStatusClass(order) {
+      const amount = Number(order.amount) || 0;
+      if (amount < 0) return 'status negative';
+      if (order.orderStatus !== '배송완료') return 'status neutral';
+      return 'status';
+    }
+
+    function setError(message) {
+      errorState.textContent = message;
+      errorState.hidden = !message;
+      emptyState.hidden = true;
+    }
+
+    function formatAmount(value) {
+      return formatCurrency.format(value).replace('₩', '').trim() + '원';
+    }
+
+    function formatSettlementAmount(settlementAmount, originalAmount) {
+      if (originalAmount < 0) return `0원`;
+      return formatAmount(settlementAmount);
+    }
+
+    function makeRangeLabel() {
+      const parts = [];
+      if (isCustomDateMode()) {
+        parts.push(`${fromDateInput.value || '시작일'} ~ ${toDateInput.value || '종료일'}`);
+      } else {
+        parts.push(monthSelect.value ? `${monthSelect.value} 사용 내역` : '전체 사용 내역');
+      }
+
+      if (selectedRecipients.size === 1) {
+        parts.push(`${[...selectedRecipients][0]} 기준`);
+      } else if (selectedRecipients.size > 1) {
+        parts.push(`${selectedRecipients.size}명 기준`);
+      }
+
+      return parts.join(' · ');
+    }
+
+    function createElement(tagName, className, content) {
+      const element = document.createElement(tagName);
+      if (className) element.className = className;
+
+      if (Array.isArray(content)) {
+        element.append(...content.filter(Boolean));
+      } else if (content) {
+        element.textContent = content;
+      }
+
+      return element;
+    }
+  </script>
+</body>
+</html>

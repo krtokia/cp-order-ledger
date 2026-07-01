@@ -1,0 +1,25 @@
+{
+  "name": "tmp1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "crawler.js",
+  "scripts": {
+    "crawl": "node crawler.js",
+    "serve": "node server.js",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.0.8",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "debug": false,
+  "dateRange": {
+    "cutoffDate": null,
+    "daysAgo": 2,
+    "toDate": null
+  },
+  "maxPages": 10,
+  "database": {
+    "enabled": true,
+    "type": "sqlite",
+    "path": "./data/orders.sqlite"
+  },
+  "notifications": {
+    "enabled": false,
+    "provider": "ntfy",
+    "ntfy": {
+      "serverUrl": "https://ntfy.sh",
+      "topic": "",
+      "token": ""
+    },
+    "pushover": {
+      "apiUrl": "https://api.pushover.net/1/messages.json",
+      "token": "",
+      "user": ""
+    }
+  }
+}

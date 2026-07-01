@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Local browser session; contains Coupang cookies/login data.
+.local-session/
+
+# Private order data and local databases
+data/*
+!data/.gitkeep
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# Raw exports or temporary import files
+*.csv
+
+# Logs and debug dumps
+logs/
+*.log
+debug.*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Environment variables and local secret overrides
+.env
+.env.*
+!.env.example
+config/*.local.json
+config/*secret*.json
+
+# Test/build artifacts
+coverage/
+test-results/
+playwright-report/
+dist/
+build/
+.cache/
+tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
