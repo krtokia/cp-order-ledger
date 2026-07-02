@@ -281,6 +281,7 @@ test('parseCliArgs supports debug and date range options', () => {
     '--debug',
     '--notify',
     '--notify-provider=pushover',
+    '--notify-priority=urgent',
     '--db',
     '--db-path',
     './tmp/orders.sqlite',
@@ -292,6 +293,7 @@ test('parseCliArgs supports debug and date range options', () => {
     debug: true,
     notify: true,
     notifyProvider: 'pushover',
+    notifyPriority: 'urgent',
     databaseEnabled: true,
     databasePath: './tmp/orders.sqlite',
     daysAgo: 7,
@@ -347,13 +349,14 @@ test('loadRuntimeConfig exposes database settings from CLI', () => {
 
 test('loadRuntimeConfig exposes notification settings from CLI', () => {
   const config = loadRuntimeConfig({
-    argv: ['--notify', '--notify-provider', 'pushover'],
+    argv: ['--notify', '--notify-provider', 'pushover', '--notify-priority', 'low'],
     configPath: './not-found-config.json',
     now: new Date(2026, 6, 1, 14, 30, 0)
   });
 
   assert.equal(config.notifications.enabled, true);
   assert.equal(config.notifications.provider, 'pushover');
+  assert.equal(config.notifications.priority, 'low');
 });
 
 test('validateOrderRecord catches empty DB fields', () => {
@@ -396,12 +399,51 @@ test('sendFailureNotification sends ntfy POST', async () => {
     });
 
     assert.deepEqual(result, { sent: true, provider: 'ntfy' });
-    assert.equal(captured.url, 'https://ntfy.example.com/my-topic');
+    const requestUrl = new URL(captured.url);
+    assert.equal(`${requestUrl.origin}${requestUrl.pathname}`, 'https://ntfy.example.com/my-topic');
+    assert.equal(requestUrl.searchParams.get('title'), '중단');
+    assert.equal(requestUrl.searchParams.get('priority'), 'high');
+    assert.equal(requestUrl.searchParams.get('tags'), 'warning');
     assert.equal(captured.options.method, 'POST');
-    assert.equal(captured.options.headers.Title, '중단');
+    assert.equal(captured.options.headers.Title, undefined);
     assert.equal(captured.options.headers.Authorization, 'Bearer secret');
     assert.match(captured.options.body, /필드 누락/);
     assert.match(captured.options.body, /orderNumber=1/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('sendFailureNotification maps Pushover priority', async () => {
+  const originalFetch = globalThis.fetch;
+  let captured;
+
+  globalThis.fetch = async (url, options) => {
+    captured = { url, options };
+    return { ok: true };
+  };
+
+  try {
+    const result = await sendFailureNotification({
+      enabled: true,
+      provider: 'pushover',
+      priority: 'low',
+      pushover: {
+        apiUrl: 'https://api.pushover.example.com/1/messages.json',
+        token: 'app-token',
+        user: 'user-key'
+      }
+    }, {
+      title: '중단',
+      message: '필드 누락'
+    });
+
+    assert.deepEqual(result, { sent: true, provider: 'pushover' });
+    assert.equal(captured.url, 'https://api.pushover.example.com/1/messages.json');
+    assert.equal(captured.options.method, 'POST');
+    assert.equal(captured.options.body.get('token'), 'app-token');
+    assert.equal(captured.options.body.get('user'), 'user-key');
+    assert.equal(captured.options.body.get('priority'), '-1');
   } finally {
     globalThis.fetch = originalFetch;
   }

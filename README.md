@@ -160,7 +160,10 @@ node crawler.js --debug --days-ago=7
 ```bash
 CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy NTFY_TOPIC=my-topic node crawler.js
 CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=pushover PUSHOVER_TOKEN=xxx PUSHOVER_USER=yyy node crawler.js
+CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy CRAWL_NOTIFY_PRIORITY=urgent NTFY_TOPIC=my-topic node crawler.js
 ```
+
+중요도는 `notifications.priority` 또는 `CRAWL_NOTIFY_PRIORITY`로 설정합니다. 값은 `silent`, `low`, `normal`, `high`, `urgent`를 지원하며 기본값은 `high`입니다.
 
 ---
 

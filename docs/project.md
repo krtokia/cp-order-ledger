@@ -210,6 +210,7 @@ CREATE TABLE orders (
   "notifications": {
     "enabled": false,
     "provider": "ntfy",
+    "priority": "high",
     "ntfy": {
       "serverUrl": "https://ntfy.sh",
       "topic": "",
@@ -234,6 +235,10 @@ CREATE TABLE orders (
 - `database.path`: SQLite DB 파일 경로.
 - `notifications.enabled`: 비정상 중단 시 알림 전송 여부.
 - `notifications.provider`: `ntfy` 또는 `pushover`.
+- `notifications.priority`: 알림 중요도. `silent`, `low`, `normal`, `high`, `urgent` 중 하나. 기본값은 `high`.
+  - ntfy: `silent -> min`, `low -> low`, `normal -> default`, `high -> high`, `urgent -> urgent`
+  - Pushover: `silent -> -2`, `low -> -1`, `normal -> 0`, `high/urgent -> 1`
+  - Pushover의 emergency priority `2`는 반복 재전송용 `retry/expire`가 필요하므로 현재 공통 중요도 설정에서는 사용하지 않는다.
 - `notifications.ntfy.topic`: ntfy 구독 토픽.
 - `notifications.pushover.token/user`: Pushover 앱 토큰 및 사용자 키.
 
@@ -246,6 +251,7 @@ node crawler.js --debug --days-ago=7
 node crawler.js --no-debug --cutoff-date=2026-06-24 --to-date=2026-07-01
 node crawler.js --days-ago=60 --max-pages=10
 node crawler.js --notify --notify-provider=ntfy
+node crawler.js --notify-priority=urgent
 node crawler.js --db-path=./data/orders.sqlite
 node crawler.js --no-db
 ```
@@ -261,7 +267,48 @@ pnpm serve
 ```bash
 CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy NTFY_TOPIC=my-secret-topic node crawler.js
 CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=pushover PUSHOVER_TOKEN=xxx PUSHOVER_USER=yyy node crawler.js
+CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy CRAWL_NOTIFY_PRIORITY=urgent NTFY_TOPIC=my-secret-topic node crawler.js
 ```
+
+알림 확인용 실제 실패 환경:
+
+1. DB 경로를 기존 파일 아래로 지정한다. 브라우저를 띄우기 전에 실패하므로 가장 빠르고, 쿠팡 세션이나 주문 데이터에 손대지 않는다.
+
+   ```bash
+   CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy NTFY_TOPIC=my-secret-topic node crawler.js --db --db-path ./README.md/orders.sqlite
+   ```
+
+   예상 실패: SQLite DB 폴더를 만들다가 `EEXIST: file already exists, mkdir './README.md'`로 중단된다.
+
+2. Playwright 브라우저 캐시를 빈 디렉터리로 돌린다. 브라우저 실행 단계에서 실패하며, DB를 끄면 저장 데이터에 손대지 않는다.
+
+   ```bash
+   mkdir -p /tmp/pw-empty-coupang-test
+   CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy NTFY_TOPIC=my-secret-topic PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-empty-coupang-test node crawler.js --no-db
+   ```
+
+   예상 실패: `Executable doesn't exist`로 Chromium 실행 전에 중단된다.
+
+3. 로그인 세션을 임시로 빼서 로그인 풀림 상황을 만든다. 실제 구매내역 페이지 파싱 실패 경로를 확인할 수 있다.
+
+   ```bash
+   mv .local-session .local-session.notify-test.bak
+   CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy NTFY_TOPIC=my-secret-topic node crawler.js --no-db
+   rm -rf .local-session
+   mv .local-session.notify-test.bak .local-session
+   ```
+
+   예상 실패: 로그인 화면이나 비정상 페이지라서 `주문 상세보기 버튼과 주문 블록이 모두 없습니다...`로 중단된다.
+
+4. 페이지 안전장치를 일부러 작게 잡는다. 구매내역이 2페이지 이상 있고 다음 페이지 버튼이 활성화되어 있을 때만 실패한다.
+
+   ```bash
+   CRAWL_NOTIFY_ENABLED=true CRAWL_NOTIFY_PROVIDER=ntfy NTFY_TOPIC=my-secret-topic node crawler.js --no-db --days-ago=3650 --max-pages=1
+   ```
+
+   예상 실패: 2페이지로 넘어가려는 순간 `1페이지를 초과하려고 해서...`로 중단된다.
+
+주의: `--cutoff-date=bad`, `--days-ago=bad`, 깨진 JSON 설정 파일처럼 런타임 설정을 읽는 단계에서 나는 오류는 현재 `notifyFailure()`가 있는 `try/catch` 밖에서 발생한다. 따라서 알림 전송 테스트용 실패 케이스로는 적합하지 않다. 로그 파일 생성 실패도 로거 설치 단계에서 나므로 같은 이유로 피한다.
 
 비정상 중단으로 보는 상황:
 

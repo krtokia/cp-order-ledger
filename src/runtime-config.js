@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
   notifications: {
     enabled: false,
     provider: 'ntfy',
+    priority: 'high',
     ntfy: {
       serverUrl: 'https://ntfy.sh',
       topic: '',
@@ -130,6 +131,11 @@ export function parseCliArgs(argv) {
         if (consumedNext) index += 1;
         break;
 
+      case '--notify-priority':
+        result.notifyPriority = requireValue(rawKey, value);
+        if (consumedNext) index += 1;
+        break;
+
       case '--db-path':
         result.databasePath = requireValue(rawKey, value);
         if (consumedNext) index += 1;
@@ -187,10 +193,15 @@ function resolveNotifications(fileNotifications, cliConfig, env) {
     ?? env.CRAWL_NOTIFY_PROVIDER
     ?? fileNotifications.provider
     ?? DEFAULT_CONFIG.notifications.provider;
+  const priority = cliConfig.notifyPriority
+    ?? env.CRAWL_NOTIFY_PRIORITY
+    ?? fileNotifications.priority
+    ?? DEFAULT_CONFIG.notifications.priority;
 
   return {
     enabled: cliConfig.notify ?? envEnabled ?? fileNotifications.enabled ?? DEFAULT_CONFIG.notifications.enabled,
     provider,
+    priority,
     ntfy: {
       serverUrl: env.NTFY_SERVER_URL ?? fileNotifications.ntfy?.serverUrl ?? DEFAULT_CONFIG.notifications.ntfy.serverUrl,
       topic: env.NTFY_TOPIC ?? fileNotifications.ntfy?.topic ?? DEFAULT_CONFIG.notifications.ntfy.topic,
