@@ -279,6 +279,7 @@ test('upsertOrderRecord writes JSON by orderNumber primary key', () => {
 test('parseCliArgs supports debug and date range options', () => {
   assert.deepEqual(parseCliArgs([
     '--debug',
+    '--login',
     '--notify',
     '--notify-provider=pushover',
     '--notify-priority=urgent',
@@ -291,6 +292,7 @@ test('parseCliArgs supports debug and date range options', () => {
     '--max-pages=3'
   ]), {
     debug: true,
+    loginOnly: true,
     notify: true,
     notifyProvider: 'pushover',
     notifyPriority: 'urgent',
@@ -357,6 +359,16 @@ test('loadRuntimeConfig exposes notification settings from CLI', () => {
   assert.equal(config.notifications.enabled, true);
   assert.equal(config.notifications.provider, 'pushover');
   assert.equal(config.notifications.priority, 'low');
+});
+
+test('loadRuntimeConfig exposes login-only mode from CLI', () => {
+  const config = loadRuntimeConfig({
+    argv: ['--login'],
+    configPath: './not-found-config.json',
+    now: new Date(2026, 6, 1, 14, 30, 0)
+  });
+
+  assert.equal(config.loginOnly, true);
 });
 
 test('validateOrderRecord catches empty DB fields', () => {

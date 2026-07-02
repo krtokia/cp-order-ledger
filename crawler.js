@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
 import { appendFileSync } from 'node:fs';
+import { stdin as input, stdout as output } from 'node:process';
+import { createInterface } from 'node:readline/promises';
 import { installConsoleFileLogger } from './src/logger.js';
 import { sendFailureNotification } from './src/notifier.js';
 import { openOrderDatabase } from './src/order-db.js';
@@ -10,6 +12,8 @@ import { loadRuntimeConfig } from './src/runtime-config.js';
 
 const LOG_FILE = './logs/crawler.log';
 const ORDERS_JSON_FILE = './data/orders.json';
+const USER_DATA_DIR = './.local-session';
+const ORDER_LIST_URL = 'https://mc.coupang.com/ssr/desktop/order/list';
 
 class CrawlAbortError extends Error {
   constructor(message, context = '') {
@@ -139,6 +143,44 @@ async function returnToOrderList(page, listUrl) {
   }
 }
 
+async function launchCrawlerContext() {
+  // 💡 아카마이(Akamai) 봇 탐지 우회 및 로컬 GUI 구동 셋업
+  return chromium.launchPersistentContext(USER_DATA_DIR, {
+    headless: false, // 로컬 검증용 (배포 시 true로 변경)
+    viewport: { width: 1280, height: 800 },
+    ignoreDefaultArgs: ['--enable-automation'],
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--no-sandbox',
+      '--disable-infobars'
+    ]
+  });
+}
+
+async function runLoginOnly(context) {
+  const page = await context.newPage();
+  console.log('🔐 로그인 전용 모드: 쿠팡 구매내역 페이지를 엽니다.');
+  await page.goto(ORDER_LIST_URL, { waitUntil: 'domcontentloaded' });
+  await waitForPageSettled(page);
+  console.log('브라우저에서 쿠팡 로그인을 완료하고 구매내역이 보이는지 확인하세요.');
+  await waitForEnter('로그인이 끝났으면 이 터미널에서 Enter를 누르세요. 세션을 저장하고 종료합니다.');
+  console.log('✅ 로그인 세션 확인 완료. .local-session에 저장됩니다.');
+}
+
+async function waitForEnter(message) {
+  if (!input.isTTY) {
+    throw new Error('--login은 터미널 입력이 필요합니다. SSH/터미널에서 직접 실행하세요.');
+  }
+
+  const readline = createInterface({ input, output });
+  try {
+    await readline.question(`${message}\n`);
+  } finally {
+    readline.close();
+  }
+}
+
 async function main() {
   const uninstallLogger = installConsoleFileLogger(LOG_FILE);
   const runtimeConfig = loadRuntimeConfig();
@@ -146,34 +188,31 @@ async function main() {
   const debugState = { detailTextWritten: false };
   let orderDb = null;
   let context = null;
+  const runMode = runtimeConfig.loginOnly ? '로그인 세션 준비' : '크롤링';
   try {
-    console.log(`\n\n===== ${new Date().toLocaleString()} 크롤링 시작 =====`);
-    console.log(`🎯 크롤링 타겟 기간: ${startDate.toLocaleDateString()} ~ ${endDate.toLocaleDateString()}`);
+    console.log(`\n\n===== ${new Date().toLocaleString()} ${runMode} 시작 =====`);
+    if (!runtimeConfig.loginOnly) {
+      console.log(`🎯 크롤링 타겟 기간: ${startDate.toLocaleDateString()} ~ ${endDate.toLocaleDateString()}`);
+    }
     debugLog(runtimeConfig, `📝 로그 파일: ${LOG_FILE}`);
     debugLog(runtimeConfig, `🧪 디버그 모드: ${runtimeConfig.debugDetailLogFile}`);
     debugLog(runtimeConfig, `📅 날짜 설정 출처: ${runtimeConfig.dateRangeSource}`);
     debugLog(runtimeConfig, `🛑 최대 페이지 안전장치: ${runtimeConfig.maxPages}페이지`);
+
+    if (runtimeConfig.loginOnly) {
+      context = await launchCrawlerContext();
+      await runLoginOnly(context);
+      return;
+    }
+
     orderDb = await openOrderDatabase(runtimeConfig.database);
     if (orderDb) console.log(`🗄️ DB 연결 완료: ${orderDb.path}`);
 
-    const userDataDir = './.local-session';
-    
-    // 💡 아카마이(Akamai) 봇 탐지 우회 및 로컬 GUI 구동 셋업
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false, // 로컬 검증용 (배포 시 true로 변경)
-      viewport: { width: 1280, height: 800 },
-      ignoreDefaultArgs: ['--enable-automation'],
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-      args: [
-        '--disable-blink-features=AutomationControlled',
-        '--no-sandbox',
-        '--disable-infobars'
-      ]
-    });
+    context = await launchCrawlerContext();
 
     const page = await context.newPage();
     debugLog(runtimeConfig, '📦 쿠팡 구매내역 진입 중 (봇 탐지 우회 적용)...');
-    await page.goto('https://mc.coupang.com/ssr/desktop/order/list', { waitUntil: 'domcontentloaded' });
+    await page.goto(ORDER_LIST_URL, { waitUntil: 'domcontentloaded' });
 
     let currentPage = 1;
     let keepCrawling = true;
@@ -285,8 +324,8 @@ async function main() {
       });
     }
     orderDb?.close();
-    console.log('\n🏁 스캔 로직 안전하게 종료됨.');
-    console.log(`===== ${new Date().toLocaleString()} 크롤링 종료 =====`);
+    console.log(`\n🏁 ${runMode} 안전하게 종료됨.`);
+    console.log(`===== ${new Date().toLocaleString()} ${runMode} 종료 =====`);
     uninstallLogger();
   }
 }

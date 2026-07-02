@@ -49,12 +49,14 @@ export function loadRuntimeConfig({
   const maxPages = cliConfig.maxPages ?? fileConfig.maxPages ?? DEFAULT_CONFIG.maxPages;
   const notifications = resolveNotifications(fileConfig.notifications ?? {}, cliConfig, process.env);
   const database = resolveDatabase(fileConfig.database ?? {}, cliConfig);
+  const loginOnly = cliConfig.loginOnly ?? false;
 
   return {
     debug,
     maxPages,
     notifications,
     database,
+    loginOnly,
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     dateRangeSource: dateRange.source,
@@ -85,6 +87,11 @@ export function parseCliArgs(argv) {
 
     if (arg === '--no-notify') {
       result.notify = false;
+      continue;
+    }
+
+    if (arg === '--login' || arg === '--login-only') {
+      result.loginOnly = true;
       continue;
     }
 

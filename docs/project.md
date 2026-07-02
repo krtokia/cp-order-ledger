@@ -12,7 +12,7 @@ Playwright를 사용하여 쿠팡(Coupang) 마이페이지의 `구매내역`을 
 - 라이브러리: Playwright 내장 Chromium
 - 실행 방식: 로컬에서 `headless: false`로 눈으로 디버깅
 - 세션 유지: `.local-session` 폴더의 persistent context 사용
-  - 로그인 코드는 없다. 최초 1회는 `headless: false`로 뜬 브라우저에서 사람이 직접 쿠팡에 로그인해 세션을 `.local-session`에 적재한다. 이후 실행은 이 세션을 재사용한다. 세션 만료 시 목록 파싱이 비어 `abortCrawl`로 중단되며, 재로그인으로 복구한다. (사용자 절차는 README 참고)
+  - 로그인 자동화 코드는 없다. 최초 1회는 `pnpm run crawl -- --login`으로 `headless: false` 브라우저를 열고, 사람이 직접 쿠팡에 로그인해 세션을 `.local-session`에 적재한다. 이후 실행은 이 세션을 재사용한다. 세션 만료 시 목록 파싱이 비어 `abortCrawl`로 중단되며, 재로그인으로 복구한다. (사용자 절차는 README 참고)
 - 로그: 화면 출력과 동시에 `logs/crawler.log`에 append 저장
 - 로그 rotate: 실행 시작 시 `logs/crawler.log`가 5MB 이상이면 `logs/crawler.log.1`로 회전, 최대 5개 보관
 - 주문 상세 원문은 실행당 1회만 `debug.YYYY-MM-DD.log`에 append 저장
@@ -250,6 +250,7 @@ node crawler.js --cutoff-date=2026-06-24
 node crawler.js --debug --days-ago=7
 node crawler.js --no-debug --cutoff-date=2026-06-24 --to-date=2026-07-01
 node crawler.js --days-ago=60 --max-pages=10
+node crawler.js --login
 node crawler.js --notify --notify-provider=ntfy
 node crawler.js --notify-priority=urgent
 node crawler.js --db-path=./data/orders.sqlite
@@ -260,6 +261,19 @@ GUI 서버:
 
 ```bash
 pnpm serve
+```
+
+Playwright 브라우저/실행 의존성 설치:
+
+```bash
+pnpm run browser:install
+pnpm run browser:install-deps
+```
+
+로그인 세션 준비:
+
+```bash
+pnpm run crawl -- --login
 ```
 
 알림 secret은 config에 직접 적어도 되지만, 환경변수를 우선 추천한다.

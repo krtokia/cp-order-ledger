@@ -27,10 +27,10 @@ pnpm install
 `Executable doesn't exist ...` 같은 오류가 납니다. 그럴 때는 아래 명령으로 한 번만 설치하세요.
 
 ```bash
-pnpm exec playwright install chromium
+pnpm run browser:install
 ```
 
-> 리눅스/WSL에서 실행 라이브러리가 없다고 나오면 `pnpm exec playwright install-deps chromium`도 함께 실행하세요.
+> 리눅스/WSL에서 실행 라이브러리가 없다고 나오면 `pnpm run browser:install-deps`도 함께 실행하세요.
 
 ---
 
@@ -42,18 +42,18 @@ pnpm exec playwright install chromium
 
 처음 한 번은 이렇게 합니다.
 
-1. 크롤러를 실행합니다.
+1. 로그인 전용 모드로 브라우저를 엽니다.
 
    ```bash
-   pnpm crawl
+   pnpm run crawl -- --login
    ```
 
 2. 잠시 후 **Chromium 창이 자동으로 뜨고** 쿠팡 구매내역 페이지로 이동합니다.
    아직 로그인 전이라 로그인 화면이 보일 겁니다.
 3. 그 창에서 **평소처럼 쿠팡에 로그인**합니다. (아이디/비밀번호, 필요하면 문자 인증까지)
-4. 로그인해서 구매내역이 보이는 상태가 되면 세션이 `.local-session/`에 저장됩니다.
-   - 이 첫 실행은 로그인하느라 크롤링이 중간에 멈추거나(주문 목록을 못 찾음) 실패할 수 있는데 정상입니다.
-5. 창을 닫고 **다시 `pnpm crawl`을 실행**하면, 이제 로그인된 상태로 주문 수집이 진행됩니다.
+4. 로그인해서 구매내역이 보이는 상태가 되면 터미널로 돌아와 **Enter**를 누릅니다.
+5. 브라우저가 닫히면서 세션이 `.local-session/`에 저장됩니다.
+6. **다시 `pnpm crawl`을 실행**하면, 이제 로그인된 상태로 주문 수집이 진행됩니다.
 
 > 💡 브라우저 창은 일부러 눈에 보이게(`headless: false`) 띄웁니다. 로그인 상태를 눈으로 확인하고 봇 탐지를 피하기 위해서입니다.
 
@@ -61,7 +61,7 @@ pnpm exec playwright install chromium
 
 쿠팡 세션은 시간이 지나면 만료됩니다. 크롤링 중
 `로그인이 풀렸거나 페이지 구조가 바뀐 것으로 판단합니다` 같은 메시지로 멈추면,
-위 **2. 최초 로그인**을 그대로 다시 하면 됩니다. (창이 뜨면 다시 로그인 → 창 닫고 재실행)
+위 **2. 최초 로그인**을 그대로 다시 하면 됩니다. (로그인 전용 모드 실행 → 다시 로그인 → 터미널에서 Enter → 재실행)
 
 세션을 완전히 초기화하고 싶으면 `.local-session/` 폴더를 통째로 지운 뒤 다시 로그인하세요.
 
@@ -140,7 +140,8 @@ node crawler.js --debug --days-ago=7
 
 | 증상 | 확인 |
 | --- | --- |
-| `Executable doesn't exist` 로 시작 못 함 | Chromium 미설치. `pnpm exec playwright install chromium` |
+| `Executable doesn't exist` 로 시작 못 함 | Chromium 미설치. `pnpm run browser:install` |
+| Chromium 실행 라이브러리 오류 | 리눅스/WSL 의존성 미설치. `pnpm run browser:install-deps` |
 | `로그인이 풀렸거나 ...` 로 멈춤 | 세션 만료. [최초 로그인](#2-최초-로그인-딱-한-번)을 다시 진행 |
 | 주문이 하나도 안 수집됨 | 기간 설정 확인(`daysAgo`/`cutoffDate`), 또는 로그인 상태 확인 |
 | 파싱이 깨져서 중단됨 | 쿠팡 페이지 구조 변경 가능성. 아래 로그 확인 후 [docs/project.md](docs/project.md#장애-대응-루틴) 참고 |
