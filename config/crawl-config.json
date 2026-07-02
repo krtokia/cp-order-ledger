@@ -14,6 +14,7 @@
   "notifications": {
     "enabled": false,
     "provider": "ntfy",
+    "priority": "high",
     "ntfy": {
       "serverUrl": "https://ntfy.sh",
       "topic": "",
