@@ -48,22 +48,21 @@ pnpm run browser:install
    pnpm run crawl -- --login
    ```
 
-2. 잠시 후 **Chromium 창이 자동으로 뜨고** 쿠팡 구매내역 페이지로 이동합니다.
-   아직 로그인 전이라 로그인 화면이 보일 겁니다.
+   이 명령은 기존 `.local-session/`을 지우고 새 로그인 세션을 만듭니다.
+
+2. 잠시 후 **Chromium 창이 자동으로 뜨고** 쿠팡 홈으로 이동합니다.
 3. 그 창에서 **평소처럼 쿠팡에 로그인**합니다. (아이디/비밀번호, 필요하면 문자 인증까지)
-4. 로그인해서 구매내역이 보이는 상태가 되면 터미널로 돌아와 **Enter**를 누릅니다.
+4. 로그인 상태를 확인했으면 터미널로 돌아와 **Enter**를 누릅니다.
 5. 브라우저가 닫히면서 세션이 `.local-session/`에 저장됩니다.
 6. **다시 `pnpm crawl`을 실행**하면, 이제 로그인된 상태로 주문 수집이 진행됩니다.
 
-> 💡 브라우저 창은 일부러 눈에 보이게(`headless: false`) 띄웁니다. 로그인 상태를 눈으로 확인하고 봇 탐지를 피하기 위해서입니다.
+> 💡 로그인 전용 모드는 브라우저 창을 눈으로 확인해야 하므로 항상 headed 모드로 실행합니다.
 
 ### 로그인이 다시 풀렸을 때
 
 쿠팡 세션은 시간이 지나면 만료됩니다. 크롤링 중
 `로그인이 풀렸거나 페이지 구조가 바뀐 것으로 판단합니다` 같은 메시지로 멈추면,
 위 **2. 최초 로그인**을 그대로 다시 하면 됩니다. (로그인 전용 모드 실행 → 다시 로그인 → 터미널에서 Enter → 재실행)
-
-세션을 완전히 초기화하고 싶으면 `.local-session/` 폴더를 통째로 지운 뒤 다시 로그인하세요.
 
 ---
 
@@ -76,6 +75,18 @@ pnpm crawl
 ```
 
 기본적으로 최근 며칠치 주문을 수집합니다. 기간을 바꾸고 싶으면 아래 [설정](#5-설정)을 보세요.
+
+브라우저를 화면에 보이지 않게 실행하려면 headless 옵션을 붙입니다.
+
+```bash
+pnpm crawl --headless
+```
+
+다시 화면에 보이게 실행하려면 headed 옵션을 붙이면 됩니다.
+
+```bash
+pnpm crawl --headed
+```
 
 수집이 끝나면 주문 데이터가 `data/orders.json`과 `data/orders.sqlite`에 저장됩니다.
 같은 주문번호는 덮어쓰기(upsert)되므로, 배송완료였던 주문이 나중에 취소/반품으로 바뀌어도 다시 돌리면 최신 상태로 갱신됩니다.
@@ -109,6 +120,7 @@ pnpm serve
 ```json
 {
   "debug": false,
+  "headless": false,
   "dateRange": {
     "cutoffDate": null,
     "daysAgo": 7,
@@ -122,6 +134,7 @@ pnpm serve
 - `cutoffDate`: `YYYY-MM-DD`. 이 날짜보다 오래된 주문을 만나면 멈춤 (설정하면 `daysAgo`보다 우선)
 - `toDate`: 언제까지 볼지. 비우면 현재까지
 - `maxPages`: 자동 페이지 넘김 안전장치
+- `headless`: `true`면 브라우저 창 없이 실행, `false`면 화면에 보이는 브라우저로 실행
 
 실행할 때 인자로 주면 config보다 우선합니다. 이번만 다른 기간을 볼 때 편합니다.
 
@@ -130,6 +143,8 @@ node crawler.js --days-ago=7
 node crawler.js --cutoff-date=2026-06-24
 node crawler.js --to-date=2026-07-01
 node crawler.js --debug --days-ago=7
+node crawler.js --headless
+node crawler.js --headed
 ```
 
 더 자세한 옵션(알림, DB 경로 등)은 [docs/project.md](docs/project.md#실행-설정)에 있습니다.

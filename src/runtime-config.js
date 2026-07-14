@@ -9,6 +9,7 @@ import {
 
 const DEFAULT_CONFIG = {
   debug: false,
+  headless: false,
   maxPages: 10,
   notifications: {
     enabled: false,
@@ -46,6 +47,7 @@ export function loadRuntimeConfig({
   const cliConfig = parseCliArgs(argv);
   const dateRange = resolveDateRange(fileConfig.dateRange ?? {}, cliConfig, now);
   const debug = cliConfig.debug ?? fileConfig.debug ?? DEFAULT_CONFIG.debug;
+  const headless = cliConfig.headless ?? fileConfig.headless ?? DEFAULT_CONFIG.headless;
   const maxPages = cliConfig.maxPages ?? fileConfig.maxPages ?? DEFAULT_CONFIG.maxPages;
   const notifications = resolveNotifications(fileConfig.notifications ?? {}, cliConfig, process.env);
   const database = resolveDatabase(fileConfig.database ?? {}, cliConfig);
@@ -53,6 +55,7 @@ export function loadRuntimeConfig({
 
   return {
     debug,
+    headless,
     maxPages,
     notifications,
     database,
@@ -77,6 +80,16 @@ export function parseCliArgs(argv) {
 
     if (arg === '--no-debug') {
       result.debug = false;
+      continue;
+    }
+
+    if (arg === '--headless') {
+      result.headless = true;
+      continue;
+    }
+
+    if (arg === '--headed' || arg === '--no-headless') {
+      result.headless = false;
       continue;
     }
 

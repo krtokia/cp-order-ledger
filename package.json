@@ -6,6 +6,7 @@
   "scripts": {
     "browser:install": "playwright install chromium",
     "browser:install-deps": "playwright install-deps chromium",
+    "browser:test": "node playwright-browser-open.js",
     "crawl": "node crawler.js",
     "serve": "node server.js",
     "test": "node --test"
@@ -15,6 +16,7 @@
     "descriptions": {
       "browser:install": "Playwright용 Chromium 브라우저를 설치합니다.",
       "browser:install-deps": "Linux/WSL에서 Chromium 실행에 필요한 시스템 의존성을 설치합니다.",
+      "browser:test": "쿠팡 접속 확인용 headed Playwright 브라우저를 엽니다.",
       "crawl": "쿠팡 구매내역을 크롤링합니다. 로그인 준비는 `pnpm run crawl -- --login`을 사용합니다.",
       "serve": "월별 주문 정산 GUI/API 서버를 실행합니다.",
       "test": "Node 내장 테스트 러너로 파서와 저장/알림 로직을 검증합니다."

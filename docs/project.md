@@ -10,9 +10,9 @@ Playwright를 사용하여 쿠팡(Coupang) 마이페이지의 `구매내역`을 
 # 기술 스택 및 구동 환경
 - 환경: WSL2 (Ubuntu), Node.js v24, pnpm
 - 라이브러리: Playwright 내장 Chromium
-- 실행 방식: 로컬에서 `headless: false`로 눈으로 디버깅
+- 실행 방식: 기본은 headed(`headless: false`)이며, 실행 인자 `--headless`/`--headed`로 브라우저 표시 여부를 선택한다.
 - 세션 유지: `.local-session` 폴더의 persistent context 사용
-  - 로그인 자동화 코드는 없다. 최초 1회는 `pnpm run crawl -- --login`으로 `headless: false` 브라우저를 열고, 사람이 직접 쿠팡에 로그인해 세션을 `.local-session`에 적재한다. 이후 실행은 이 세션을 재사용한다. 세션 만료 시 목록 파싱이 비어 `abortCrawl`로 중단되며, 재로그인으로 복구한다. (사용자 절차는 README 참고)
+  - 로그인 자동화 코드는 없다. `pnpm run crawl -- --login`은 기존 `.local-session`을 삭제한 뒤 headed 브라우저를 열고, 사람이 직접 쿠팡에 로그인해 새 세션을 적재한다. 이후 실행은 이 세션을 재사용한다. 세션 만료 시 목록 파싱이 비어 `abortCrawl`로 중단되며, 재로그인으로 복구한다. (사용자 절차는 README 참고)
 - 로그: 화면 출력과 동시에 `logs/crawler.log`에 append 저장
 - 로그 rotate: 실행 시작 시 `logs/crawler.log`가 5MB 이상이면 `logs/crawler.log.1`로 회전, 최대 5개 보관
 - 주문 상세 원문은 실행당 1회만 `debug.YYYY-MM-DD.log`에 append 저장
@@ -196,6 +196,7 @@ CREATE TABLE orders (
 ```json
 {
   "debug": false,
+  "headless": false,
   "maxPages": 10,
   "database": {
     "enabled": true,
@@ -229,6 +230,7 @@ CREATE TABLE orders (
 - `daysAgo`: `cutoffDate`가 없을 때 오늘 기준 며칠 전까지 볼지 정한다.
 - `toDate`: `YYYY-MM-DD` 형식. 없으면 현재 시각까지 본다.
 - `debug`: `true`면 디버그 로그를 더 출력한다. 주문 상세 원문은 debug 여부와 관계없이 실행당 1회 `debug.YYYY-MM-DD.log`에 저장한다.
+- `headless`: `true`면 브라우저 창 없이 실행한다. 로그인 전용 모드는 사람이 직접 로그인해야 하므로 항상 headed로 실행한다.
 - `logs/crawler.log`: 실행 시작 시 5MB 이상이면 rotate한다. 기본 보관 파일은 5개다.
 - `maxPages`: 자동 페이지 이동 안전장치. 기본 10페이지.
 - `database.enabled`: SQLite 저장 여부.
@@ -249,6 +251,8 @@ node crawler.js --days-ago=7
 node crawler.js --cutoff-date=2026-06-24
 node crawler.js --debug --days-ago=7
 node crawler.js --no-debug --cutoff-date=2026-06-24 --to-date=2026-07-01
+node crawler.js --headless
+node crawler.js --headed
 node crawler.js --days-ago=60 --max-pages=10
 node crawler.js --login
 node crawler.js --notify --notify-provider=ntfy

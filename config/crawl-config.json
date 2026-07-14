@@ -1,5 +1,6 @@
 {
   "debug": false,
+  "headless": false,
   "dateRange": {
     "cutoffDate": null,
     "daysAgo": 2,

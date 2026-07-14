@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, rmSync } from 'node:fs';
 import { stdin as input, stdout as output } from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { installConsoleFileLogger } from './src/logger.js';
@@ -13,7 +13,17 @@ import { loadRuntimeConfig } from './src/runtime-config.js';
 const LOG_FILE = './logs/crawler.log';
 const ORDERS_JSON_FILE = './data/orders.json';
 const USER_DATA_DIR = './.local-session';
+const COUPANG_HOME_URL = 'https://www.coupang.com';
 const ORDER_LIST_URL = 'https://mc.coupang.com/ssr/desktop/order/list';
+const BROWSER_LOCALE = 'ko-KR';
+const BROWSER_TIMEZONE = 'Asia/Seoul';
+const ACCEPT_LANGUAGE = 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7';
+const BROWSER_WINDOW = {
+  width: 1280,
+  height: 900,
+  x: 80,
+  y: 80
+};
 
 class CrawlAbortError extends Error {
   constructor(message, context = '') {
@@ -45,6 +55,11 @@ function writeDetailRawLogOnce(detailText, runtimeConfig, debugState, context) {
 
 function abortCrawl(message, context) {
   throw new CrawlAbortError(message, context);
+}
+
+function resetLoginSession() {
+  rmSync(USER_DATA_DIR, { recursive: true, force: true });
+  console.log(`🧹 기존 로그인 세션 초기화: ${USER_DATA_DIR}`);
 }
 
 async function debugOrderDetail(page, currentPage, orderBlock, runtimeConfig, debugState, orderDb) {
@@ -143,27 +158,54 @@ async function returnToOrderList(page, listUrl) {
   }
 }
 
-async function launchCrawlerContext() {
+async function launchCrawlerContext({ headless = false } = {}) {
+  const browserArgs = [
+    `--lang=${BROWSER_LOCALE}`,
+    '--disable-blink-features=AutomationControlled',
+    '--no-sandbox',
+    '--disable-infobars'
+  ];
+
+  if (!headless) {
+    browserArgs.push(
+      '--start-normal',
+      `--window-size=${BROWSER_WINDOW.width},${BROWSER_WINDOW.height}`,
+      `--window-position=${BROWSER_WINDOW.x},${BROWSER_WINDOW.y}`
+    );
+  }
+
   // 💡 아카마이(Akamai) 봇 탐지 우회 및 로컬 GUI 구동 셋업
   return chromium.launchPersistentContext(USER_DATA_DIR, {
-    headless: false, // 로컬 검증용 (배포 시 true로 변경)
+    headless,
+    locale: BROWSER_LOCALE,
+    timezoneId: BROWSER_TIMEZONE,
     viewport: { width: 1280, height: 800 },
     ignoreDefaultArgs: ['--enable-automation'],
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-    args: [
-      '--disable-blink-features=AutomationControlled',
-      '--no-sandbox',
-      '--disable-infobars'
-    ]
+    extraHTTPHeaders: {
+      'Accept-Language': ACCEPT_LANGUAGE
+    },
+    args: browserArgs
   });
 }
 
+async function bringPageToFront(page) {
+  await page.bringToFront().catch(() => {});
+  await page.evaluate(({ width, height, x, y }) => {
+    window.moveTo(x, y);
+    window.resizeTo(width, height);
+    window.focus();
+  }, BROWSER_WINDOW).catch(() => {});
+}
+
 async function runLoginOnly(context) {
-  const page = await context.newPage();
-  console.log('🔐 로그인 전용 모드: 쿠팡 구매내역 페이지를 엽니다.');
-  await page.goto(ORDER_LIST_URL, { waitUntil: 'domcontentloaded' });
+  const page = context.pages()[0] ?? await context.newPage();
+  await bringPageToFront(page);
+  console.log('🔐 로그인 전용 모드: 쿠팡 홈을 엽니다.');
+  await page.goto(COUPANG_HOME_URL, { waitUntil: 'domcontentloaded' });
+  await bringPageToFront(page);
   await waitForPageSettled(page);
-  console.log('브라우저에서 쿠팡 로그인을 완료하고 구매내역이 보이는지 확인하세요.');
+  await bringPageToFront(page);
+  console.log('브라우저에서 쿠팡 로그인을 완료하세요. 필요하면 구매내역까지 이동해 로그인 상태를 확인하세요.');
   await waitForEnter('로그인이 끝났으면 이 터미널에서 Enter를 누르세요. 세션을 저장하고 종료합니다.');
   console.log('✅ 로그인 세션 확인 완료. .local-session에 저장됩니다.');
 }
@@ -189,8 +231,13 @@ async function main() {
   let orderDb = null;
   let context = null;
   const runMode = runtimeConfig.loginOnly ? '로그인 세션 준비' : '크롤링';
+  const browserHeadless = runtimeConfig.loginOnly ? false : runtimeConfig.headless;
   try {
     console.log(`\n\n===== ${new Date().toLocaleString()} ${runMode} 시작 =====`);
+    if (runtimeConfig.loginOnly && runtimeConfig.headless) {
+      console.warn('⚠️ 로그인 전용 모드는 브라우저 창이 필요해 headed 모드로 실행합니다.');
+    }
+    console.log(`🧭 브라우저 모드: ${browserHeadless ? 'headless' : 'headed'}`);
     if (!runtimeConfig.loginOnly) {
       console.log(`🎯 크롤링 타겟 기간: ${startDate.toLocaleDateString()} ~ ${endDate.toLocaleDateString()}`);
     }
@@ -200,7 +247,8 @@ async function main() {
     debugLog(runtimeConfig, `🛑 최대 페이지 안전장치: ${runtimeConfig.maxPages}페이지`);
 
     if (runtimeConfig.loginOnly) {
-      context = await launchCrawlerContext();
+      resetLoginSession();
+      context = await launchCrawlerContext({ headless: browserHeadless });
       await runLoginOnly(context);
       return;
     }
@@ -208,9 +256,10 @@ async function main() {
     orderDb = await openOrderDatabase(runtimeConfig.database);
     if (orderDb) console.log(`🗄️ DB 연결 완료: ${orderDb.path}`);
 
-    context = await launchCrawlerContext();
+    context = await launchCrawlerContext({ headless: browserHeadless });
 
     const page = await context.newPage();
+    if (!browserHeadless) await bringPageToFront(page);
     debugLog(runtimeConfig, '📦 쿠팡 구매내역 진입 중 (봇 탐지 우회 적용)...');
     await page.goto(ORDER_LIST_URL, { waitUntil: 'domcontentloaded' });
 

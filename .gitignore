@@ -4,6 +4,7 @@ node_modules/
 
 # Local browser session; contains Coupang cookies/login data.
 .local-session/
+.local-browser-test/
 
 # Private order data and local databases
 data/*

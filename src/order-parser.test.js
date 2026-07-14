@@ -286,6 +286,7 @@ test('parseCliArgs supports debug and date range options', () => {
     '--db',
     '--db-path',
     './tmp/orders.sqlite',
+    '--headless',
     '--days-ago=7',
     '--to-date',
     '2026-07-01',
@@ -298,10 +299,17 @@ test('parseCliArgs supports debug and date range options', () => {
     notifyPriority: 'urgent',
     databaseEnabled: true,
     databasePath: './tmp/orders.sqlite',
+    headless: true,
     daysAgo: 7,
     toDate: '2026-07-01',
     maxPages: 3
   });
+});
+
+test('parseCliArgs supports headed and headless browser options', () => {
+  assert.equal(parseCliArgs(['--headless']).headless, true);
+  assert.equal(parseCliArgs(['--headed']).headless, false);
+  assert.equal(parseCliArgs(['--no-headless']).headless, false);
 });
 
 test('loadRuntimeConfig prefers CLI cutoff over config daysAgo', () => {
@@ -335,6 +343,22 @@ test('loadRuntimeConfig exposes maxPages from CLI', () => {
   });
 
   assert.equal(config.maxPages, 5);
+});
+
+test('loadRuntimeConfig exposes browser headless mode from CLI', () => {
+  const defaultConfig = loadRuntimeConfig({
+    argv: [],
+    configPath: './not-found-config.json',
+    now: new Date(2026, 6, 1, 14, 30, 0)
+  });
+  const headlessConfig = loadRuntimeConfig({
+    argv: ['--headless'],
+    configPath: './not-found-config.json',
+    now: new Date(2026, 6, 1, 14, 30, 0)
+  });
+
+  assert.equal(defaultConfig.headless, false);
+  assert.equal(headlessConfig.headless, true);
 });
 
 test('loadRuntimeConfig exposes database settings from CLI', () => {
