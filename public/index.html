@@ -681,7 +681,44 @@
     async function init() {
       await loadMonths();
       await loadRecipients();
+      applyQueryString();
       await loadOrders();
+    }
+
+    // ?recipient=홍길동&recipient=김철수 (또는 ?recipients=홍길동,김철수), ?month=2026-09, ?from=&to=
+    function applyQueryString() {
+      const params = new URLSearchParams(location.search);
+
+      const recipients = [
+        ...params.getAll('recipient'),
+        ...String(params.get('recipients') ?? '').split(',')
+      ].map(name => name.trim()).filter(Boolean);
+      selectedRecipients = new Set(recipients);
+      renderRecipientChips();
+
+      const from = params.get('from');
+      const to = params.get('to');
+      const month = params.get('month');
+      if (from || to) {
+        monthSelect.value = CUSTOM_DATE_VALUE;
+        fromDateInput.value = from ?? '';
+        toDateInput.value = to ?? '';
+      } else if (month !== null) {
+        monthSelect.value = availableMonths.includes(month) ? month : '';
+      }
+      updateDateRangeControls();
+    }
+
+    function syncQueryString() {
+      const params = new URLSearchParams();
+      if (isCustomDateMode()) {
+        if (fromDateInput.value) params.set('from', fromDateInput.value);
+        if (toDateInput.value) params.set('to', toDateInput.value);
+      } else {
+        params.set('month', monthSelect.value);
+      }
+      for (const recipient of selectedRecipients) params.append('recipient', recipient);
+      history.replaceState(null, '', `${location.pathname}?${params}`);
     }
 
     async function loadMonths() {
@@ -731,6 +768,7 @@
           params.append('recipient', recipient);
         }
 
+        syncQueryString();
         const url = params.toString() ? `/api/orders?${params}` : '/api/orders';
         const response = await fetch(url);
         const data = await response.json();

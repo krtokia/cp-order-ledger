@@ -27,6 +27,10 @@ const server = createServer(async (req, res) => {
       const to = url.searchParams.get('to');
       const recipients = getRecipientFilters(url.searchParams);
       const orders = await readOrders({ month, from, to, recipients });
+      if (url.searchParams.get('format') === 'text') {
+        sendText(res, formatOrdersAsText(orders, summarizeOrders(orders)));
+        return;
+      }
       const allOrders = await readOrders();
       sendJson(res, {
         orders,
@@ -120,6 +124,27 @@ function summarizeOrders(orders) {
     originalAmount: orders.reduce((sum, order) => sum + (Number(order.amount) || 0), 0),
     canceledAmount: orders.reduce((sum, order) => sum + Math.abs(Math.min(Number(order.amount) || 0, 0)), 0)
   };
+}
+
+function formatOrdersAsText(orders, summary) {
+  const won = value => `${Number(value).toLocaleString('ko-KR')}원`;
+  const lines = orders.map(order => [
+    order.orderDate,
+    order.orderNumber,
+    order.orderStatus,
+    won(order.amount),
+    order.recipientName,
+    order.productName
+  ].join('\t'));
+
+  return [
+    ['주문일', '주문번호', '상태', '금액', '받는 사람', '상품'].join('\t'),
+    ...lines,
+    '',
+    `건수: ${summary.count}  정산 합계: ${won(summary.totalAmount)}  ` +
+      `원금액: ${won(summary.originalAmount)}  취소액: ${won(summary.canceledAmount)}`,
+    ''
+  ].join('\n');
 }
 
 function normalizeOrderForView(order) {
