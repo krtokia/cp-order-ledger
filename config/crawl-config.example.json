@@ -13,12 +13,12 @@
     "path": "./data/orders.sqlite"
   },
   "notifications": {
-    "enabled": true,
+    "enabled": false,
     "provider": "ntfy",
     "priority": "high",
     "ntfy": {
-      "serverUrl": "https://ntfy.krtokia.dev",
-      "topic": "coupang-crawler",
+      "serverUrl": "https://ntfy.example.com",
+      "topic": "",
       "token": ""
     },
     "pushover": {

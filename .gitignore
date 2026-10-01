@@ -48,3 +48,11 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.example.json
+
+# Local backups made before edits (크롤러/설정 수정 전 백업)
+*.bak
+*.bak.*
+
+# Live crawl config — 운영 환경값(ntfy 서버·토픽·토큰)이 들어간다.
+# 새로 받으면 crawl-config.example.json 을 복사해서 쓸 것.
+config/crawl-config.json
