@@ -3,7 +3,7 @@
   "headless": false,
   "dateRange": {
     "cutoffDate": null,
-    "daysAgo": 2,
+    "daysAgo": 10,
     "toDate": null
   },
   "maxPages": 10,
@@ -13,12 +13,12 @@
     "path": "./data/orders.sqlite"
   },
   "notifications": {
-    "enabled": false,
+    "enabled": true,
     "provider": "ntfy",
     "priority": "high",
     "ntfy": {
-      "serverUrl": "https://ntfy.sh",
-      "topic": "",
+      "serverUrl": "https://ntfy.krtokia.dev",
+      "topic": "coupang-crawler",
       "token": ""
     },
     "pushover": {
