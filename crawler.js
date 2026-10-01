@@ -265,6 +265,7 @@ async function main() {
 
     let currentPage = 1;
     let keepCrawling = true;
+    let previousPageSignature = null;
 
     // 🔄 페이지 순회 루프
     while (keepCrawling) {
@@ -297,6 +298,13 @@ async function main() {
           pageText.slice(0, 3000)
         );
       }
+
+      const pageSignature = orderBlocks.map(b => `${b.rawDateText ?? ''}|${(b.text ?? '').slice(0, 80)}`).join('||');
+      if (currentPage > 1 && pageSignature === previousPageSignature) {
+        console.log('⏹️ 이전 페이지와 동일한 내용이 감지되어 더 이상 페이지가 없다고 판단하고 정상 종료합니다.');
+        break;
+      }
+      previousPageSignature = pageSignature;
 
       for (const orderBlock of orderBlocks) {
         const cardText = orderBlock.text;
@@ -343,7 +351,7 @@ async function main() {
 
       // 🚀 다음 페이지 이동
       try {
-        const nextButton = await page.$('.btn-next, a.next, button:has-text("다음")');
+        const nextButton = await page.$('button:has-text("다음")');
         if (nextButton) {
           const isDisabled = await nextButton.evaluate(el => el.disabled || el.classList.contains('disabled'));
           if (isDisabled) {
