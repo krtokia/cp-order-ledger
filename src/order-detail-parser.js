@@ -22,7 +22,7 @@ export function parseOrderDetailPage(detailText, statusConfig = DEFAULT_STATUS_C
   const lines = splitMeaningfulLines(detailText).map(cleanValue);
   const header = extractOrderHeader(lines);
   const status = extractStatus(lines, header.index, statusConfig);
-  const items = extractProductItems(lines, header.index, status?.lineIndex ?? header.index);
+  const items = extractProductItems(lines, header.index, status?.lineIndex ?? header.index, status, statusConfig);
   const totalPayment = extractTotalPaymentAmount(lines);
   const amountSign = status?.amountSign ?? 'unknown';
 
@@ -147,13 +147,21 @@ function resolveConfiguredStatus(line, statusConfig) {
     ?? null;
 }
 
-function extractProductItems(lines, headerIndex, statusLineIndex) {
+function extractProductItems(lines, headerIndex, statusLineIndex, status, statusConfig) {
   const startIndex = Math.max(statusLineIndex + 1, headerIndex + 1, 0);
   const endIndex = findDetailItemSectionEnd(lines, startIndex);
   const section = lines.slice(startIndex, endIndex);
   const items = [];
+  // 상품마다 상태가 따로 붙는다(일부만 반품/취소한 주문). 상품 위의 상태 줄을 그 상품의 상태로 본다.
+  let current = { status: status?.status ?? null, amountSign: status?.amountSign ?? 'unknown' };
 
   for (let index = 0; index < section.length; index += 1) {
+    const sectionStatus = resolveExactStatus(section[index], statusConfig);
+    if (sectionStatus) {
+      current = sectionStatus;
+      continue;
+    }
+
     const amount = parseMoney(section[index]);
     if (amount === null) continue;
 
@@ -163,11 +171,28 @@ function extractProductItems(lines, headerIndex, statusLineIndex) {
     items.push({
       name,
       amount,
-      amountText: extractMoneyText(section[index])
+      amountText: extractMoneyText(section[index]),
+      quantity: extractQuantity(section[index + 1]),
+      status: current.status,
+      amountSign: current.amountSign
     });
   }
 
   return dedupeItems(items);
+}
+
+function resolveExactStatus(line, statusConfig) {
+  const entries = [
+    ...(statusConfig.positiveAmountStatuses ?? []).map(status => ({ status, amountSign: '+' })),
+    ...(statusConfig.negativeAmountStatuses ?? []).map(status => ({ status, amountSign: '-' }))
+  ];
+
+  return entries.find(entry => normalizeLoose(line) === normalizeLoose(entry.status)) ?? null;
+}
+
+function extractQuantity(line) {
+  const match = String(line ?? '').match(/^(\d+)\s*개$/);
+  return match ? Number(match[1]) : 1;
 }
 
 function findDetailItemSectionEnd(lines, startIndex) {
@@ -317,7 +342,7 @@ function dedupeItems(items) {
   const result = [];
 
   for (const item of items) {
-    const key = `${item.name}::${item.amount}`;
+    const key = `${item.name}::${item.amount}::${item.quantity}::${item.status}`;
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(item);

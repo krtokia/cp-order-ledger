@@ -112,7 +112,10 @@ test('parseOrderDetailPage extracts the first debug detail payload', () => {
     {
       name: 'WIHOLL 중년 여성 오버핏 티셔츠 여름 루즈핏 배트윙 소매 무지 반팔티, 커피, FREE',
       amount: 23900,
-      amountText: '23,900 원'
+      amountText: '23,900 원',
+      quantity: 1,
+      status: '배송완료',
+      amountSign: '+'
     }
   ]);
   assert.deepEqual(result.recipient, {
@@ -198,7 +201,10 @@ test('parseOrderDetailPage follows current Coupang detail text schema', () => {
     {
       name: 'WIHOLL 중년 여성 오버핏 티셔츠 여름 루즈핏 배트윙 소매 무지 반팔티, 커피, FREE',
       amount: 23900,
-      amountText: '23,900 원'
+      amountText: '23,900 원',
+      quantity: 1,
+      status: '배송완료',
+      amountSign: '+'
     }
   ]);
   assert.deepEqual(result.recipient, {
@@ -529,4 +535,133 @@ test('openOrderDatabase upserts SQLite orders', async () => {
   } finally {
     db.close();
   }
+});
+
+test('toOrderRecord uses total payment (discount applied) over product line price', () => {
+  const detail = parseOrderDetailPage(`
+    주문상세
+    2026. 10. 18 주문주문번호 90000000000001
+    배송완료
+    어제(월) 도착
+    테스트 케이스, 혼합색상, 1개
+    12,500 원
+    1개
+    장바구니 담기
+    결제 정보
+    총 상품가격
+    12,500 원
+    할인금액
+    -630 원
+    배송비
+    0 원
+    총 결제금액
+    11,870 원
+  `);
+
+  assert.equal(toOrderRecord(detail).amount, 11870);
+});
+
+test('toOrderRecord multiplies quantity when falling back to product lines', () => {
+  const detail = parseOrderDetailPage(`
+    주문상세
+    2026. 8. 3 주문주문번호 90000000000002
+    배송완료
+    테스트 사리, 130g, 6개
+    7,805 원
+    2개
+    장바구니 담기
+    테스트 육수, 10개, 290g
+    9,660 원
+    1개
+    장바구니 담기
+  `);
+
+  assert.deepEqual(detail.productItems.map(item => item.quantity), [2, 1]);
+  assert.equal(detail.totalPaymentAmount, null);
+  assert.equal(toOrderRecord(detail).amount, 25270);
+});
+
+test('toOrderRecord keeps negative sign on canceled total payment', () => {
+  const detail = parseOrderDetailPage(`
+    주문상세
+    2026. 10. 22 주문주문번호 90000000000003
+    취소완료
+    테스트 칼갈이, 1개, 실버
+    65,000 원
+    1개
+    장바구니 담기
+    결제 정보
+    총 상품가격
+    65,000 원
+    할인금액
+    -27,000 원
+    총 결제금액
+    38,000 원
+  `);
+
+  assert.equal(toOrderRecord(detail).amount, -38000);
+});
+
+test('toOrderRecord subtracts returned items on partially returned orders', () => {
+  const detail = parseOrderDetailPage(`
+    주문상세
+    2026. 6. 9 주문주문번호 90000000000004
+    배송완료
+    6/10(수) 도착
+    테스트 마사지볼 A, 1개
+    8,900 원
+    1개
+    장바구니 담기
+    배송완료
+    6/10(수) 도착
+    테스트 마사지볼 B, 2개
+    6,000 원
+    1개
+    장바구니 담기
+    반품완료
+    테스트 마사지볼 C, 1개
+    5,000 원
+    1개
+    장바구니 담기
+    테스트 마사지볼 D, 1개
+    9,900 원
+    1개
+    장바구니 담기
+    반품 상세 보기
+    결제 정보
+    총 상품가격
+    29,800 원
+    할인금액
+    -250 원
+    배송비
+    0 원
+    총 결제금액
+    29,550 원
+  `);
+
+  assert.deepEqual(detail.productItems.map(item => item.amountSign), ['+', '+', '-', '-']);
+  const record = toOrderRecord(detail);
+  assert.equal(record.amount, 14650);
+  assert.equal(record.orderStatus, '배송완료 · 일부 반품완료');
+});
+
+test('toOrderRecord includes shipping fee via total payment', () => {
+  const detail = parseOrderDetailPage(`
+    주문상세
+    2026. 6. 20 주문주문번호 90000000000005
+    배송완료
+    테스트 클로그, 280
+    29,900 원
+    1개
+    장바구니 담기
+    결제 정보
+    총 상품가격
+    29,900 원
+    배송비
+    2,800 원
+    총 결제금액
+    32,700 원
+  `);
+
+  assert.equal(toOrderRecord(detail).amount, 32700);
 });
